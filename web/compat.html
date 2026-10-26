@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ReadTool 内核检测</title>
+<style>
+  :root { color-scheme: light dark; }
+  body { margin: 0; padding: 16px 16px 48px; font: 16px/1.65 -apple-system, "Segoe UI", "Noto Sans CJK SC", sans-serif; background: #fbfbf8; color: #22262b; }
+  @media (prefers-color-scheme: dark) { body { background: #14161a; color: #e6e8eb; } }
+  h1 { font-size: 1.15rem; margin: 8px 0 4px; }
+  h2 { font-size: 0.95rem; margin: 22px 0 6px; color: #6b7280; font-weight: 600; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+  th, td { text-align: left; padding: 7px 8px; border-bottom: 1px solid #d9dce0; vertical-align: top; }
+  th { font-weight: 600; color: #6b7280; }
+  td:nth-child(2) { white-space: nowrap; width: 1%; }
+  td:nth-child(3) { width: 62%; }
+  .ok { color: #2f7d4f; font-weight: 600; }
+  .no { color: #b3392c; font-weight: 600; }
+  .warn { color: #9a6a15; font-weight: 600; }
+  .ua { font-size: 0.78rem; word-break: break-all; color: #6b7280; }
+  .verdict { margin: 16px 0; padding: 14px 16px; border: 1px solid #d9dce0; border-left: 3px solid #4f8a6a; border-radius: 8px; background: #fff; }
+  @media (prefers-color-scheme: dark) { .verdict { background: #1b1e23; border-color: #2a2f36; } }
+  .copy { margin-top: 18px; padding: 12px; background: #23272d; color: #d8dde3; border-radius: 8px; font: 0.82rem/1.5 ui-monospace, Consolas, monospace; word-break: break-all; }
+  .copy b { color: #9cc7a3; }
+  a { color: #2f6f8f; }
+</style>
+</head>
+<body>
+<h1>ReadTool 内核检测</h1>
+<p class="ua" id="ua">读取中…</p>
+<div id="verdict"></div>
+<h2>关键能力</h2>
+<table id="rows"><tbody></tbody></table>
+<h2>把下面这段发给开发者</h2>
+<div class="copy" id="summary"></div>
+<p style="margin-top:18px"><a href="/">← 回首页</a></p>
+
+<script>
+/* 这一页刻意用最老的语法写（ES5），因为它的用途就是排查「新语法跑不起来」。
+   不使用 let/const、箭头函数、模板字符串、可选链、??。 */
+(function () {
+  var ua = navigator.userAgent || "";
+  document.getElementById("ua").textContent = ua;
+
+  function chromeVersion() {
+    var m = ua.match(/Chrome\/(\d+)/);
+    if (m) return parseInt(m[1], 10);
+    var m2 = ua.match(/Firefox\/(\d+)/);
+    if (m2) return -parseInt(m2[1], 10);   /* 负数表示 Firefox 版本 */
+    return 0;
+  }
+
+  function probeSyntax(src) {
+    try { new Function(src); return true; } catch (e) { return false; }
+  }
+
+  function probeCss(prop, value) {
+    try {
+      if (window.CSS && CSS.supports) return CSS.supports(prop, value);
+      return false;
+    } catch (e) { return false; }
+  }
+
+  var checks = [
+    ["ES 模块（type=module）", "noModule" in HTMLScriptElement.prototype, "模块脚本是整套前端的地基；不支持则页面永远停在「载入中」"],
+    ["箭头函数 / let / const", probeSyntax("var f = function(){return 1}; let a = 1; const b = 2;"), "ES6 基础语法"],
+    ["模板字符串", probeSyntax("var a = `x${1}`;"), "ES6"],
+    ["async / await", probeSyntax("async function f(){ await 1; }"), "ES2017"],
+    ["对象展开 {...obj}", probeSyntax("var a = {x:1}; var b = Object.assign({}, a);"), "ES2018"],
+    ["可选链 a?.b", probeSyntax("var a = {}; var b = a.b?.c;"), "ES2020，Chrome 80+（本项目已不再使用）"],
+    ["空值合并 a ?? b", probeSyntax("var a = null; var b = a != null ? a : 1;"), "ES2020（本项目已不再使用，仅作参考）"],
+    ["catch 省略参数", probeSyntax("try { throw 1 } catch { }"), "ES2019，Chrome 66+（本项目已不再使用）"],
+    ["ResizeObserver", typeof window.ResizeObserver === "function", "表格三档判定靠它感知宽度变化"],
+    ["fetch()", typeof window.fetch === "function", "所有数据请求"],
+    ["Promise", typeof window.Promise === "function", "基础"],
+    ["URL / URLSearchParams", typeof window.URL === "function" && typeof window.URLSearchParams === "function", "路由与搜索参数"],
+    ["localStorage", (function () { try { localStorage.setItem("__t", "1"); localStorage.removeItem("__t"); return true; } catch (e) { return false; } })(), "进度与字号记忆"],
+    ["CSS 容器查询 @container", probeCss("container-type", "inline-size"), "窄窗降字号用；不支持只是字号不降级，不影响阅读"],
+    ["CSS :has()", probeCss("selector(:has(*))", "true") || probeCss("selector(:has(*))", ""), "非必需"],
+    ["Intl.Segmenter", typeof Intl !== "undefined" && typeof Intl.Segmenter === "function", "非必需"],
+    ["Array.prototype.at", typeof [].at === "function", "非必需"],
+    ["String.prototype.replaceAll", typeof "".replaceAll === "function", "非必需"],
+    ["crypto.randomUUID", !!(window.crypto && typeof crypto.randomUUID === "function"), "非必需（M2 才用）"]
+  ];
+
+  var tbody = document.querySelector("#rows tbody");
+  var fails = [];
+  for (var i = 0; i < checks.length; i++) {
+    var name = checks[i][0], ok = !!checks[i][1], note = checks[i][2];
+    if (!ok) fails.push(name);
+    var tr = document.createElement("tr");
+    var td1 = document.createElement("td");
+    var td2 = document.createElement("td");
+    var td3 = document.createElement("td");
+    td1.textContent = name;
+    td2.className = ok ? "ok" : "no";
+    td2.textContent = ok ? "支持" : "不支持";
+    td3.textContent = note;
+    td3.style.color = "#6b7280";
+    td3.style.fontSize = "0.82rem";
+    tr.appendChild(td1); tr.appendChild(td2); tr.appendChild(td3);
+    tbody.appendChild(tr);
+  }
+
+  var cv = chromeVersion();
+  var core = "";
+  if (cv > 0) core = "Chrome / WebView " + cv;
+  else if (cv < 0) core = "Firefox " + (-cv);
+  else core = "未知内核";
+
+  var modules = "noModule" in HTMLScriptElement.prototype;
+  var verdict = document.getElementById("verdict");
+  var msg, cls;
+  if (!modules) {
+    msg = "结论：这个内核不支持 ES 模块（需要 Chrome/WebView 61+）。ReadTool 的页面脚本无法执行 —— 这就是「一直载入中」的原因。请升级 Android System WebView，或改用 Chrome / Firefox。";
+    cls = "no";
+  } else if (fails.length === 0) {
+    msg = "结论：关键能力齐全，当前版本应该可以正常阅读。如果仍然卡在「载入中」，把下面这段发给开发者。";
+    cls = "ok";
+  } else {
+    msg = "结论：基础能力具备，但有 " + fails.length + " 项不支持（" + fails.join("、") + "）。多数情况下仍可阅读；若打不开，把下面这段发给开发者。";
+    cls = "warn";
+  }
+  verdict.innerHTML = '<p class="' + cls + '" style="margin:0">' + msg + "</p>";
+
+  var platform = navigator.platform || "";
+  var standalone = window.matchMedia && window.matchMedia("(display-mode: standalone)").matches ? "standalone" : "browser";
+  var lines = [
+    "<b>内核：</b>" + core + "　<b>平台：</b>" + platform + "　<b>模式：</b>" + standalone,
+    "<b>UA：</b>" + ua,
+    "<b>不支持项：</b>" + (fails.length ? fails.join("、") : "无")
+  ];
+  document.getElementById("summary").innerHTML = lines.join("<br>");
+})();
+</script>
+</body>
+</html>

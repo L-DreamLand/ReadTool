@@ -1,0 +1,382 @@
+/* 正文排版（服务端渲染出的 HTML，FR-06）
+ * 宽表三档（FR-04/ADR-005）：
+ *   data-mode="table"  cell ≥ min_cell_px  → 普通表格，占满宽度
+ *   data-mode="scroll" card_view_px ≤ cell < min_cell_px → 横滑 + 首列冻结
+ *   data-mode="card"   cell < card_view_px → 每行变卡片，表头变成字段名
+ */
+.markdown {
+  font-size: var(--font-px);
+  line-height: var(--line-height);
+  font-family: var(--font-family);
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+.markdown > :first-child {
+  margin-top: 0;
+}
+
+.markdown h1,
+.markdown h2,
+.markdown h3,
+.markdown h4,
+.markdown h5 {
+  line-height: 1.35;
+  font-weight: 650;
+  margin: 1.6em 0 0.6em;
+  scroll-margin-top: 12px;
+}
+
+.markdown h1 {
+  font-size: 1.5em;
+  margin-top: 0.2em;
+}
+
+.markdown h2 {
+  font-size: 1.22em;
+  padding-bottom: 0.24em;
+  border-bottom: 1px solid var(--line);
+}
+
+.markdown h3 {
+  font-size: 1.06em;
+}
+
+.markdown h4,
+.markdown h5 {
+  font-size: 1em;
+  color: var(--fg-dim);
+}
+
+.markdown p {
+  margin: 0.85em 0;
+}
+
+.markdown ul,
+.markdown ol {
+  margin: 0.85em 0;
+  padding-left: 1.35em;
+}
+
+.markdown li {
+  margin: 0.3em 0;
+}
+
+.markdown li > ul,
+.markdown li > ol {
+  margin: 0.2em 0;
+}
+
+.markdown a {
+  color: var(--link);
+  text-decoration: none;
+  border-bottom: 1px solid color-mix(in srgb, var(--link) 40%, transparent);
+}
+
+.markdown a:active {
+  background: color-mix(in srgb, var(--link) 12%, transparent);
+}
+
+.markdown a.link-broken {
+  color: var(--warn);
+  border-bottom-style: dashed;
+}
+
+.markdown a.link-broken::after {
+  content: "（缺失）";
+  font-size: 0.72em;
+  margin-left: 0.15em;
+}
+
+.markdown strong {
+  font-weight: 650;
+}
+
+.markdown blockquote {
+  margin: 1em 0;
+  padding: 0.1em 0 0.1em 0.9em;
+  border-left: 3px solid var(--quote-bar);
+  color: var(--fg-dim);
+}
+
+.markdown blockquote p {
+  margin: 0.4em 0;
+}
+
+.markdown hr {
+  border: 0;
+  border-top: 1px solid var(--line);
+  margin: 1.6em 0;
+}
+
+.markdown img {
+  max-width: 100%;
+  height: auto;
+  border-radius: var(--radius-sm);
+}
+
+/* 行内代码 */
+.markdown code {
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", "Cascadia Mono",
+    Menlo, Consolas, "Liberation Mono", monospace;
+  font-size: 0.86em;
+  background: var(--code-bg);
+  color: var(--code-fg);
+  padding: 0.14em 0.38em;
+  border-radius: 5px;
+  word-break: break-word;
+}
+
+/* ---------- 代码块（FR-16）：头部语言 + 复制按钮 ---------- */
+.code-block {
+  margin: 1.1em 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--code-bg);
+  overflow: hidden;
+}
+
+.code-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  /* 让 48px 的复制按钮有个不局促的容器高度；视觉上只比原来高一点 */
+  min-height: 48px;
+  padding: 0 4px 0 12px;
+  border-bottom: 1px solid var(--line);
+  background: color-mix(in srgb, var(--code-bg) 60%, var(--bg-elev));
+}
+
+.code-lang {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.72em;
+  letter-spacing: 0.02em;
+  color: var(--fg-dim);
+  text-transform: none;
+}
+
+.code-copy {
+  flex: 0 0 auto;
+  /* NFR-04：触摸目标 ≥48×48。视觉上是一枚小胶囊，靠行内 padding 撑开，不额外加粗边框 */
+  min-height: 48px;
+  padding: 0 12px;
+  font: inherit;
+  font-size: 0.72em;
+  color: var(--fg-dim);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.code-copy:hover,
+.code-copy:focus-visible {
+  border-color: var(--line);
+  color: var(--fg);
+  outline: none;
+}
+
+.code-copy:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.code-copy.is-done {
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 40%, transparent);
+}
+
+/* 代码块：横滑而不是折行 */
+.markdown pre {
+  margin: 1em 0;
+  padding: 12px 14px;
+  background: var(--code-bg);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  line-height: 1.55;
+  tab-size: 2;
+}
+
+.markdown pre code {
+  background: none;
+  padding: 0;
+  font-size: 0.82em;
+  color: var(--code-fg);
+  white-space: pre;
+  word-break: normal;
+}
+
+/* 标识符不要在中间断开（name / description 被折成两半很难读） */
+.markdown td code,
+.markdown th code {
+  white-space: nowrap;
+}
+
+/* ---------- 表格三档 ---------- */
+.table-wrap {
+  margin: 1.1em 0;
+  /* 兜底：即使判定成表格视图，个别表格（超长英文标识符）仍可能超出容器，
+     此时允许横滑而不是裁切内容 */
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  /* 判定基于这个元素的实测宽度，不是 window.innerWidth（ADR-012） */
+}
+
+.markdown table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.86em;
+  line-height: 1.55;
+}
+
+.markdown th,
+.markdown td {
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  text-align: left;
+  vertical-align: top;
+}
+
+.markdown th {
+  background: var(--bg-sunken);
+  font-weight: 600;
+  /* 不能 nowrap：表头不换行会把表格最小宽度顶到容器之外，
+     表格视图里右侧就被裁掉了（第 3 列内容直接看不见） */
+}
+
+/* 档位 2：放不下但还能读 —— 横滑 + 首列冻结 */
+.table-wrap[data-mode="scroll"] {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--bg-elev);
+}
+
+.table-wrap[data-mode="scroll"] table {
+  width: max-content;
+  min-width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.table-wrap[data-mode="scroll"] th,
+.table-wrap[data-mode="scroll"] td {
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-right: 1px solid var(--line);
+}
+
+.table-wrap[data-mode="scroll"] tr:last-child td {
+  border-bottom: 0;
+}
+
+.table-wrap[data-mode="scroll"] th:last-child,
+.table-wrap[data-mode="scroll"] td:last-child {
+  border-right: 0;
+}
+
+.table-wrap[data-mode="scroll"] th:first-child,
+.table-wrap[data-mode="scroll"] td:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--bg-elev);
+  box-shadow: 1px 0 0 var(--line);
+}
+
+.table-wrap[data-mode="scroll"] thead th:first-child {
+  background: var(--bg-sunken);
+}
+
+/* 档位 3：一行一张卡片，表头降级为字段名 */
+.table-wrap[data-mode="card"] table,
+.table-wrap[data-mode="card"] tbody,
+.table-wrap[data-mode="card"] tr,
+.table-wrap[data-mode="card"] td {
+  display: block;
+  width: auto;
+}
+
+.table-wrap[data-mode="card"] thead {
+  display: none;
+}
+
+.table-wrap[data-mode="card"] tr {
+  margin: 0 0 12px;
+  padding: 4px 0;
+  background: var(--bg-elev);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+}
+
+.table-wrap[data-mode="card"] tr:last-child {
+  margin-bottom: 0;
+}
+
+.table-wrap[data-mode="card"] td {
+  border: 0;
+  padding: 7px 14px;
+  display: grid;
+  grid-template-columns: minmax(4.5em, 30%) 1fr;
+  gap: 10px;
+  font-size: 0.95em;
+}
+
+.table-wrap[data-mode="card"] td::before {
+  content: attr(data-label);
+  color: var(--fg-faint);
+  font-size: 0.86em;
+  line-height: 1.6;
+}
+
+/* 首列充当卡片标题 */
+.table-wrap[data-mode="card"] td:first-child {
+  grid-template-columns: 1fr;
+  font-weight: 650;
+  font-size: 1em;
+  padding-bottom: 4px;
+}
+
+.table-wrap[data-mode="card"] td:first-child::before {
+  display: none;
+}
+
+/* 任务列表（GFM） */
+.markdown li.task-list-item {
+  list-style: none;
+  margin-left: -1.1em;
+}
+
+.markdown li.task-list-item input {
+  margin-right: 0.4em;
+}
+
+/* 脚注、定义列表等暂不出现在知识库里，不做样式 */
+
+/* ---------- 代码块内层的覆盖（必须写在 .markdown pre 之后） ----------
+   .markdown pre 和外层 .code-block 特异性相同，谁在后面谁生效，
+   所以这三条只能放在文件末尾：内层 pre 不再画边框、边距交给外框。 */
+.code-block pre {
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  padding: 12px 14px;
+  background: transparent;
+}
+
+/* chroma 只给 token 上色，背景统一由 --code-bg 控制（见 internal/render/code.go） */
+.code-block .chroma {
+  background: transparent;
+}
+
+.code-block .chroma code {
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", "Cascadia Mono",
+    Menlo, Consolas, "Liberation Mono", monospace;
+  font-size: 0.82em;
+  line-height: 1.55;
+  color: var(--code-fg);
+}

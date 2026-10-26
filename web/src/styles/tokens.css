@@ -1,0 +1,116 @@
+/* ReadTool 设计令牌（设计规格 §5.5）
+ * 主题：auto / light / dark。auto 跟随系统。
+ * 字号与断点由 boot config 注入（--font-px / --content-max-ch / --drawer-w）。
+ */
+:root {
+  color-scheme: light dark;
+
+  /* 排版 —— 竖屏平板是主目标：正文 19px，行高 1.75 */
+  --font-px: 19px;
+  --line-height: 1.75; /* FR-15：默认行距，可在排版设置里改成 1.6 / 1.9 */
+  --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+    "Noto Sans CJK SC", "Microsoft YaHei", sans-serif;
+  --font-small: 0.85em;
+  --content-max-ch: 68;
+  --drawer-w: 280px;
+  --tap-min: 48px; /* NFR-04：触摸目标 ≥48px */
+  --reader-pad-x: 20px;
+  --reader-pad-y: 16px;
+
+  /* 亮色 */
+  --bg: #fbfbf8;
+  --bg-elev: #ffffff;
+  --bg-sunken: #f1f1ec;
+  --fg: #1f2328;
+  --fg-dim: #5f6773;
+  /* NFR-04：元信息小字也要 ≥4.5:1（原 #8b929c 在 #fbfbf8 上只有 3.03） */
+  --fg-faint: #666e7a;
+  --line: #e2e2db;
+  --line-strong: #cfcfc6;
+  --accent: #2f6f4f;
+  --accent-fg: #ffffff;
+  --accent-soft: #e8f1ea;
+  --link: #1a63a8;
+  --code-bg: #f5f5f0;
+  --code-fg: #24292f;
+  --quote-bar: #d7d7cc;
+  --ok: #15803d;
+  --bad: #b91c1c;
+  --warn: #a16207;
+  --shadow: 0 1px 2px rgba(16, 24, 40, 0.05), 0 8px 24px rgba(16, 24, 40, 0.07);
+  --radius: 14px;
+  --radius-sm: 10px;
+  --topbar-h: 52px;
+}
+
+/* 暗色：auto 跟随系统 */
+@media (prefers-color-scheme: dark) {
+  :root[data-theme="auto"] {
+    --bg: #14161a;
+    --bg-elev: #1b1e24;
+    --bg-sunken: #101216;
+    --fg: #e6e8ec;
+    --fg-dim: #a2a9b4;
+    --fg-faint: #8b939f;
+    --line: #2b3038;
+    --line-strong: #3a414b;
+    --accent: #6cc79a;
+    --accent-fg: #10231a;
+    --accent-soft: #1d2b25;
+    --link: #7fb8f0;
+    --code-bg: #1a1d22;
+    --code-fg: #d9dde3;
+    --quote-bar: #3a414b;
+    --ok: #5cc98b;
+    --bad: #f87171;
+    --warn: #e3b341;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 10px 28px rgba(0, 0, 0, 0.45);
+  }
+}
+
+/* 暗色：手动选择 */
+:root[data-theme="dark"] {
+  --bg: #14161a;
+  --bg-elev: #1b1e24;
+  --bg-sunken: #101216;
+  --fg: #e6e8ec;
+  --fg-dim: #a2a9b4;
+  --fg-faint: #8b939f;
+  --line: #2b3038;
+  --line-strong: #3a414b;
+  --accent: #6cc79a;
+  --accent-fg: #10231a;
+  --accent-soft: #1d2b25;
+  --link: #7fb8f0;
+  --code-bg: #1a1d22;
+  --code-fg: #d9dde3;
+  --quote-bar: #3a414b;
+  --ok: #5cc98b;
+  --bad: #f87171;
+  --warn: #e3b341;
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 10px 28px rgba(0, 0, 0, 0.45);
+}
+
+/* 护眼米黄（FR-15：主题第 4 档）。
+   对比度仍按 ≥4.5:1 控制：正文 #2a2620 落在 #f5f0e1 上约 12:1。 */
+:root[data-theme="paper"] {
+  --bg: #f5f0e1;
+  --bg-elev: #fbf7ea;
+  --bg-sunken: #efe8d5;
+  --fg: #2a2620;
+  --fg-dim: #6b6152;
+  --fg-faint: #6f6653;
+  --line: #e0d7c2;
+  --line-strong: #cfc3a8;
+  --accent: #7a5c1f;
+  --accent-fg: #fdf9ef;
+  --accent-soft: #efe6cf;
+  --link: #1a5f8a;
+  --code-bg: #efe8d4;
+  --code-fg: #3a332a;
+  --quote-bar: #d8cbaa;
+  --ok: #3f6b2a;
+  --bad: #9b2c2c;
+  --warn: #8a5a00;
+  --shadow: 0 1px 2px rgba(90, 70, 30, 0.08), 0 8px 24px rgba(90, 70, 30, 0.1);
+}

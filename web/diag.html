@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ReadTool 自检</title>
+<style>
+  :root { color-scheme: light dark; }
+  body { margin: 0; padding: 16px; font: 15px/1.6 -apple-system, "Segoe UI", "Noto Sans CJK SC", sans-serif; background: #fbfbf8; color: #22262b; }
+  @media (prefers-color-scheme: dark) { body { background: #14161a; color: #e6e8eb; } }
+  h1 { font-size: 1.05rem; margin: 0 0 4px; }
+  p.sub { margin: 0 0 14px; font-size: 0.82rem; color: #6b7280; }
+  #out > div { padding: 7px 0; border-bottom: 1px solid #d9dce0; font: 0.82rem/1.55 ui-monospace, Consolas, monospace; word-break: break-all; }
+  @media (prefers-color-scheme: dark) { #out > div { border-color: #2a2f36; } }
+  .ok { color: #2f7d4f; }
+  .bad { color: #b3392c; }
+  .warn { color: #9a6a15; }
+  .n { color: #6b7280; }
+  .box { margin-top: 16px; padding: 12px; border-radius: 8px; background: #23272d; color: #d8dde3; font: 0.8rem/1.5 ui-monospace, Consolas, monospace; word-break: break-all; white-space: pre-wrap; }
+  a { color: #2f6f8f; }
+</style>
+</head>
+<body>
+<h1>ReadTool 自检</h1>
+<p class="sub">这一步用来定位「一直载入中」卡在哪：网络、鉴权、首页引用、静态资源、模块执行。</p>
+<div id="out"></div>
+<div class="box" id="summary">检测中…</div>
+<p style="margin-top:16px"><a href="/">← 回阅读首页</a>　<a href="/compat.html">内核检测</a></p>
+
+<script>
+/* 同样刻意用最老的语法（ES5），保证在任何内核上都能跑出结论。 */
+(function () {
+  var out = document.getElementById("out");
+  var summary = document.getElementById("summary");
+  var results = [];
+  var t0 = Date.now();
+
+  function el(cls, text) {
+    var d = document.createElement("div");
+    d.className = cls || "";
+    d.textContent = text;
+    out.appendChild(d);
+    return d;
+  }
+
+  function stamp() { return "[" + (Date.now() - t0) + "ms] "; }
+
+  function record(name, ok, detail) {
+    results.push((ok ? "OK " : "FAIL ") + name + " :: " + detail);
+    el(ok ? "ok" : "bad", stamp() + (ok ? "✓ " : "✗ ") + name + " — " + detail);
+    summary.textContent = results.join("\n");
+  }
+
+  /* 只作提示，不计入失败数（例如这一页本来就没有阅读页的 DOM） */
+  function note(name, detail) {
+    results.push("NOTE " + name + " :: " + detail);
+    el("warn", stamp() + "· " + name + " — " + detail);
+    summary.textContent = results.join("\n");
+  }
+
+  /* 全局错误：模块脚本抛错时这里能看到 */
+  window.addEventListener("error", function (e) {
+    var t = e && e.target;
+    if (t && t.tagName) {
+      record("资源加载 " + t.tagName, false, (t.src || t.href || "") + " 加载失败");
+    } else if (e && e.message) {
+      record("运行时错误", false, e.message + " @ " + (e.filename || "?") + ":" + (e.lineno || 0));
+    }
+  }, true);
+
+  window.addEventListener("unhandledrejection", function (e) {
+    var r = e && e.reason;
+    record("未捕获的 Promise 拒绝", false, (r && (r.stack || r.message)) || String(r));
+  });
+
+  el("n", "UA: " + navigator.userAgent);
+  el("n", "地址: " + location.href);
+  el("n", "cookie 可见项: " + (document.cookie || "(空，HttpOnly 的会话 cookie 不会显示，这是正常的)"));
+
+  function withTimeout(url, ms) {
+    var ctl = null;
+    try { ctl = new AbortController(); } catch (e) { ctl = null; }
+    var timer = setTimeout(function () { if (ctl) ctl.abort(); }, ms);
+    var opts = { cache: "no-store", credentials: "same-origin" };
+    if (ctl) opts.signal = ctl.signal;
+    return fetch(url, opts).then(
+      function (r) { clearTimeout(timer); return r; },
+      function (err) { clearTimeout(timer); throw err; }
+    );
+  }
+
+  /* 1) health */
+  var tHealth = Date.now();
+  withTimeout("/api/health", 8000).then(function (r) {
+    return r.text().then(function (body) {
+      record("GET /api/health", r.ok, "HTTP " + r.status + " · " + (Date.now() - tHealth) + "ms · " + body.slice(0, 120));
+      return null;
+    });
+  }).catch(function (err) {
+    record("GET /api/health", false, (err && err.name) + ": " + (err && err.message));
+    return null;
+  }).then(step2);
+
+  /* 2) session */
+  function step2() {
+    var t = Date.now();
+    return withTimeout("/api/auth/session", 8000).then(function (r) {
+      return r.text().then(function (body) {
+        record("GET /api/auth/session", r.ok, "HTTP " + r.status + " · " + (Date.now() - t) + "ms · " + body.slice(0, 120));
+        return null;
+      });
+    }).catch(function (err) {
+      record("GET /api/auth/session", false, (err && err.name) + ": " + (err && err.message));
+      return null;
+    }).then(step3);
+  }
+
+  /* 3) 主模块静态资源 */
+  function step3() {
+    var t = Date.now();
+    return withTimeout("/src/main.js", 8000).then(function (r) {
+      return r.text().then(function (body) {
+        record("GET /src/main.js", r.ok, "HTTP " + r.status + " · " + (Date.now() - t) + "ms · " +
+          (r.headers.get("content-type") || "?") + " · " + body.length + " 字符");
+        return null;
+      });
+    }).catch(function (err) {
+      record("GET /src/main.js", false, (err && err.name) + ": " + (err && err.message));
+      return null;
+    }).then(step3b);
+  }
+
+  /* 3b) 首页里引用的带指纹地址：能区分「服务端没指纹」和「浏览器缓存了旧首页」 */
+  var MAIN_URL = "/src/main.js";
+  function step3b() {
+    var t = Date.now();
+    return withTimeout("/", 8000).then(function (r) {
+      return r.text().then(function (body) {
+        var m = /\/src\/main\.js(\?v=[0-9a-f]{6,})?/.exec(body);
+        if (!m) { record("首页里的 main.js 引用", false, "首页里找不到 /src/main.js 引用"); return null; }
+        MAIN_URL = "/src/main.js" + (m[1] || "");
+        record("首页里的 main.js 引用", true, MAIN_URL + " · HTTP " + r.status + " · " +
+          (Date.now() - t) + "ms · 首页 " + body.length + " 字符" +
+          (m[1] ? "" : "（没有指纹，可能是浏览器缓存的旧首页）"));
+        return null;
+      });
+    }).catch(function (err) {
+      record("首页里的 main.js 引用", false, (err && err.name) + ": " + (err && err.message));
+      return null;
+    }).then(step3c);
+  }
+
+  /* 3c) 直接用首页给的地址取一次：404/HTML/CSS 类型都能看出来 */
+  function step3c() {
+    var t = Date.now();
+    return withTimeout(MAIN_URL, 8000).then(function (r) {
+      return r.text().then(function (body) {
+        var ct = r.headers.get("content-type") || "?";
+        var looksJs = body.indexOf("function") >= 0 || body.indexOf("import") >= 0;
+        record("GET " + MAIN_URL, r.ok && looksJs, "HTTP " + r.status + " · " + (Date.now() - t) + "ms · " +
+          ct + " · " + body.length + " 字符" + (looksJs ? "" : " · 内容不像 JS（多半被缓存或代理改坏了）"));
+        return null;
+      });
+    }).catch(function (err) {
+      record("GET " + MAIN_URL, false, (err && err.name) + ": " + (err && err.message));
+      return null;
+    }).then(step4);
+  }
+
+  /* 4) 先 import 一个不碰 DOM 的模块：能干净地验证「模块图能解析并执行」 */
+  function step4() {
+    return import("/src/lib/storage.js").then(function () {
+      record("import('/src/lib/storage.js')", true, "模块解析并执行成功（说明 ES module 图与语法都没问题）");
+      return null;
+    }).catch(function (err) {
+      record("import('/src/lib/storage.js')", false, (err && (err.stack || err.message)) || String(err));
+      return null;
+    }).then(step4b);
+  }
+
+  /* 4b) 再 import 真正的主模块（用首页给的地址）：此时缺 DOM 是正常的，只作提示 */
+  function step4b() {
+    return import(MAIN_URL).then(function () {
+      record("import(" + MAIN_URL + ")", true, "主模块加载并执行成功");
+      return null;
+    }).catch(function (err) {
+      var msg = (err && (err.stack || err.message)) || String(err);
+      if (/querySelector|null|Cannot read/i.test(msg)) {
+        note("import(" + MAIN_URL + ")", "主模块已开始执行，随后因本页没有阅读页 DOM 而中断（正常）");
+      } else {
+        record("import(" + MAIN_URL + ")", false, msg);
+      }
+      return null;
+    }).then(step5);
+  }
+
+  function step5() {
+    var fails = 0;
+    for (var i = 0; i < results.length; i++) { if (results[i].indexOf("FAIL") === 0) fails++; }
+    el(fails === 0 ? "ok" : "warn", "———— 自检完成：失败 " + fails + " 项 ————");
+    summary.textContent = results.join("\n");
+  }
+})();
+</script>
+</body>
+</html>

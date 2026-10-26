@@ -1,0 +1,24 @@
+ReadTool
+Copyright 2026 L-DreamLand
+
+This product is licensed under the Apache License, Version 2.0.
+See the LICENSE file for the full license text.
+
+This product includes software developed by third parties.
+The modules linked into the binary, together with their licenses, are listed
+in THIRD-PARTY.md; the full license texts are archived under
+third_party/licenses/.
+
+---
+
+开发工具声明 / Development tooling attribution
+
+本项目的开发过程中使用了下列工具（按各自许可条款在此声明）：
+
+1. billion-context（及 acp-kernel）— 会话上下文压缩工具
+   https://github.com/ranxianglei/billion-context
+   https://github.com/ranxianglei/acp-kernel
+   依其 MIT 许可的附加条款 "Attribution on Product Surfaces"：
+   This product uses billion-context (and acp-kernel).
+
+2. DeepSeek Harness (DSH) — 本地编码智能体运行环境

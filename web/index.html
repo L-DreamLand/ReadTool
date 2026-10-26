@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="auto">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="light dark">
+  <meta name="format-detection" content="telephone=no">
+  <meta name="theme-color" content="#fbfbf8" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#14161a" media="(prefers-color-scheme: dark)">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="ReadTool">
+  <!-- black-translucent：iOS 独立窗口时内容铺到状态栏下面。
+       这不是装饰——顶栏已有 env(safe-area-inset-top) 内边距，铺上去才不会多出一条白带。 -->
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="mobile-web-app-capable" content="yes">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <!-- iOS 不读 manifest 里的 icons，主屏幕图标只能靠 apple-touch-icon（180×180，不能透明） -->
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon-180.png">
+  <link rel="icon" href="/icons/icon.svg" type="image/svg+xml">
+  <title>ReadTool</title>
+  <link rel="stylesheet" href="/src/styles/tokens.css?v=__RT_ASSET_V__">
+  <link rel="stylesheet" href="/src/styles/app.css?v=__RT_ASSET_V__">
+  <link rel="stylesheet" href="/src/styles/markdown.css?v=__RT_ASSET_V__">
+  <link rel="stylesheet" href="/assets/chroma.css?v=__RT_ASSET_V__">
+</head>
+<body>
+  <div class="shell">
+    <header class="topbar">
+      <button class="icon-btn" id="btn-back" type="button" aria-label="返回" hidden>‹</button>
+      <span class="topbar-title" id="topbar-title">ReadTool</span>
+      <span id="topbar-actions" style="display:flex;gap:2px"></span>
+      <button class="icon-btn" id="btn-toc" type="button" aria-label="目录" title="目录" hidden>☰</button>
+    </header>
+
+    <main id="view" class="view">
+      <div class="loading">载入中…</div>
+    </main>
+  </div>
+
+  <div class="drawer-mask" id="drawer-mask" hidden></div>
+  <aside class="drawer" id="drawer" aria-label="目录" aria-hidden="true" hidden>
+    <div class="drawer-tabs" hidden></div>
+    <div class="drawer-body"></div>
+  </aside>
+
+  <button class="fab" id="btn-drawer-fab" type="button" aria-label="打开目录" title="目录" hidden>☰</button>
+
+  <noscript>
+    <div class="boot-error">
+      <p><strong>这个浏览器没有启用 JavaScript</strong>，ReadTool 无法显示内容。</p>
+    </div>
+  </noscript>
+
+  <script>window.__RT_BOOT__ = "__RT_BOOT_JSON__";</script>
+
+  <!-- 内核不支持 ES 模块（Chrome/WebView < 61）时，下面的模块脚本根本不会执行，
+       页面会永远停在「载入中」。用最老的语法留一句人话。 -->
+  <script nomodule>
+    (function () {
+      var v = document.getElementById("view");
+      if (!v) return;
+      v.innerHTML =
+        '<div class="boot-error">' +
+        '<p><strong>这个浏览器内核太旧了</strong>：ReadTool 需要支持 ES 模块的浏览器（Chrome/WebView 61 及以上）。</p>' +
+        '<p>可以升级「Android System WebView」，或在 Via 里把内核切换成系统 WebView 的较新版本，或改用 Chrome / Firefox / Edge。</p>' +
+        '<p><a href="/compat.html">查看这台设备的内核检测结果</a></p>' +
+        '</div>';
+    })();
+  </script>
+
+  <!-- 兜底看门狗：模块脚本能解析但中途抛错时，5 秒后把「载入中」换成可读的错误。 -->
+  <script>
+    (function () {
+      setTimeout(function () {
+        if (window.__RT_BOOTED__) return;
+        var v = document.getElementById("view");
+        if (!v) return;
+        if (v.querySelector(".boot-error")) return;
+        v.innerHTML =
+          '<div class="boot-error">' +
+          '<p><strong>页面脚本没能启动</strong>：要么浏览器缓存了旧版脚本，要么内核版本偏旧。</p>' +
+          '<p>先试<strong>强制刷新</strong>（电脑按 Ctrl+Shift+R，平板长按刷新按钮选「清除缓存并刷新」）。</p>' +
+          '<p>还是不行就看 <a href="/diag.html">自检页</a>（会指出卡在哪一步），再看 <a href="/compat.html">内核检测</a>，把结果发给我。</p>' +
+          '</div>';
+      }, 5000);
+    })();
+  </script>
+
+  <script type="module" src="/src/main.js?v=__RT_ASSET_V__"></script>
+</body>
+</html>

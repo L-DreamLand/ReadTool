@@ -1,0 +1,53 @@
+# ---- Go 构建产物 ----
+/readtool
+/readtool.exe
+/readtool.exe~
+/readtool-*
+/dist/
+/build/
+*.test
+
+# ---- 前端 ----
+/web/node_modules/
+/web/dist/
+/web/.vite/
+
+# ---- 运行时状态（状态库永不入库） ----
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+state.db*
+*.log
+/logs/
+
+# ---- 本地配置（含口令/密钥；仓库只保留示例） ----
+config.toml
+!config.example.toml
+
+# ---- 含明文密钥的备份包 ----
+*.bak-*.zip
+
+# ---- 编辑器 / 系统 ----
+.idea/
+.vscode/
+*.swp
+Thumbs.db
+desktop.ini
+
+# 冒烟期临时物
+rt-ui-verify.exe
+.tmp-*
+tools/.probe*.mjs
+
+# 启停脚本产生的运行日志
+/run.out
+/run.err
+
+# 构建隔离目录（构建工作区隔离限制）
+/tmp/
+*~
+
+# ---- 只在本机保留、不进仓库的个人产物 ----
+/环境与准备记录.md
+/kb-baseline.sha256

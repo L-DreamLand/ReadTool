@@ -1,0 +1,73 @@
+[Unit]
+# ReadTool：把本地知识库通过局域网 / 虚拟局域网（EasyTier）给平板阅读。
+# 安装：见 deploy/install.sh；手工安装见 README「在 Linux 上运行」。
+Description=ReadTool 知识库阅读服务
+Documentation=file:///usr/local/share/doc/readtool/README.md
+# 等网络就绪再启动：listen 里可能有虚拟网卡地址，网卡晚到也没关系（进程会按 rebind_interval_s 重试），
+# 但 network-online 能让「第一次启动就绑上」的概率更高。
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=readtool
+Group=readtool
+# 配置放在 /etc（root 拥有、readtool 只读）：服务进程没有写配置的权限，
+# 想改配置就用 root 编辑后 systemctl restart readtool。
+ExecStart=/usr/local/bin/readtool -config /etc/readtool/config.toml
+WorkingDirectory=/var/lib/readtool
+
+# 状态库（state.db）与会话密钥都在这里；由 systemd 创建并保证属主正确。
+StateDirectory=readtool
+StateDirectoryMode=0750
+# 应用把状态、日志都放在 $XDG_DATA_HOME/readtool 下（platform.DataDir）。
+Environment=XDG_DATA_HOME=/var/lib/readtool
+
+Restart=on-failure
+RestartSec=3s
+# 别让「端口冲突」这类必然失败变成启动风暴：60 秒内失败 5 次就停下等人工处理。
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+# ---- 加固（按 systemd 文档逐项说明，改之前请先理解代价）----
+# 提权后不可再提权：拒绝 setuid/setgid 程序。
+NoNewPrivileges=yes
+# 服务进程拿不到任何 capability；因此 listen 端口必须 ≥1024（默认 8123）。
+CapabilityBoundingSet=
+# 独立的 /tmp 与 /dev，避免和系统其他进程互相踩。
+PrivateTmp=yes
+PrivateDevices=yes
+# 整个文件系统只读，只有 StateDirectory 与下面显式列出的路径可写。
+ProtectSystem=strict
+# 家目录只读（知识库常放在 /home/xxx 下，需要能读）；不能写。
+ProtectHome=read-only
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+# Go 运行时不需要可写可执行内存。
+MemoryDenyWriteExecute=yes
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM
+# 只允许 TCP/UDP 与 unix socket（本服务只用 TCP + 本地 sqlite）。
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+
+# 写入区：状态库与日志。
+ReadWritePaths=/var/lib/readtool
+# 只读区：知识库根目录。install.sh 会把下面这行换成你的实际路径；
+# 手工安装时请务必改成本机真实路径，否则 ReadTool 会读不到知识库。
+ReadOnlyPaths=@KB_ROOT@
+
+# 日志走 journald：journalctl -u readtool -f
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=readtool
+
+[Install]
+WantedBy=multi-user.target

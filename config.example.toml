@@ -1,0 +1,63 @@
+# ReadTool 配置示例
+# 复制到 %LOCALAPPDATA%\ReadTool\config.toml（Windows）后修改，
+# 或直接用 -config 指定本文件。首次启动若配置不存在会自动生成一份同样的模板。
+
+[server]
+# 监听地址列表，每项 "IP:端口" / "主机名:端口" / ":端口"。
+# 逐项独立绑定：某项失败不影响其他项，失败的地址会按 rebind_interval_s 自动重试。
+# 规则：不能同时出现 0.0.0.0（或空 host）与具体地址 —— 语义重叠会被拒绝启动。
+#
+# 局域网 + EasyTier 虚拟网的典型配置（把地址换成 `readtool doctor` 打印出来的）：
+listen = ["192.168.1.10:8123", "10.144.144.5:8123"]
+# 只想绑全部网卡时用：
+# listen = ["0.0.0.0:8123"]
+
+# 绑定失败后的重试周期（秒）。EasyTier 网卡常常比本进程晚就绪，保留 30 即可自愈；0 = 关闭。
+rebind_interval_s = 30
+
+# 首次设置访问口令：仅当状态库尚无口令哈希时生效。留空则随机生成并打印一次。
+init_password = ""
+
+# 仅当 listen 为空数组时用于构造默认监听地址。
+port = 8123
+
+[kb]
+# 知识库根目录（必填）。ReadTool 对它严格只读，绝不写回。
+root = "D:/Knowledge-Base"
+
+# 是否把 _workspace/（机读索引、脚本产物）纳入目录浏览。
+show_workspace = false
+
+# 是否展示根目录的 INDEX.md / AGENTS.md。
+include_root_md = true
+
+# 知识库热更新（M2 起）。
+watch = true
+debounce_ms = 300
+
+# 单文件上限（MB）。
+max_file_mb = 5
+
+[ui]
+default_theme = "auto"      # auto | light | dark | sepia
+default_font_px = 19        # 平板基线；容器 < 768px 时前端降到 17
+min_cell_px = 130           # 单元格 ≥ 此宽度 → 表格视图
+card_view_px = 90           # 单元格 < 此宽度 → 卡片视图（必须小于 min_cell_px）
+drawer_px = 280             # 目录抽屉宽度，实际取 min(drawer_px, 72vw)
+content_max_ch = 68         # 正文最大行宽（字符）
+
+[security]
+session_days = 30
+login_max_attempts = 5
+login_window_s = 300
+login_lock_s = 60
+
+# 可选 HTTPS：开启后在同一个 listen 地址上换协议，不额外开端口。
+tls_enabled = false
+tls_cert = ""
+tls_key = ""
+
+[log]
+level = "info"              # debug | info | warn | error
+format = "text"             # text | json
+keep_days = 7

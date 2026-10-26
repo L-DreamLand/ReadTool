@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="ReadTool">
+  <rect width="512" height="512" fill="#2f6f4f"/>
+  <g transform="translate(0, 24)">
+    <path d="M136 128h96c22 0 40 18 40 40v216c-12-12-30-20-48-20h-88z" fill="#ffffff" opacity="0.95"/>
+    <path d="M376 128h-96c-22 0-40 18-40 40v216c12-12 30-20 48-20h88z" fill="#ffffff" opacity="0.75"/>
+    <path d="M256 168v216" stroke="#2f6f4f" stroke-width="10" stroke-linecap="round"/>
+  </g>
+</svg>
